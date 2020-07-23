@@ -24,7 +24,7 @@ def mouse_cb(event,x,y,flags,param):
     global roi_upperleft_pos
     if event==cv2.EVENT_LBUTTONDOWN:
         print("CLicked : (%d,%d)"%(x,y))
-        roi_upperleft_pos=np.array([x,y])
+        roi_upperleft_pos=np.array([max(0,x-LOWER_THRES/2),max(0,y-LOWER_THRES/2)])
 
 #define named window for mouse cb
 cv2.namedWindow("viewing_window")
