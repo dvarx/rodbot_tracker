@@ -17,10 +17,11 @@ Global Variables
 send_end_thres=0
 
 class MainWindow(QMainWindow):
-    def __init__(self,send_end_thres_,*args,**kwargs):
+    def __init__(self,send_end_thres_,exit_event_,*args,**kwargs):
         super(MainWindow,self).__init__(*args,**kwargs)
 
         self.send_end_thres=send_end_thres_
+        self.exit_event=exit_event_
 
         self.setWindowTitle("Control")
         self.layout=QVBoxLayout()
@@ -71,8 +72,8 @@ class MainWindow(QMainWindow):
         self.send_end_thres=send_end_thres_
 
 
-def main_loop(send_end_thres_):
-    mainwindow=MainWindow(send_end_thres_)
+def main_loop(send_end_thres_,exit_event):
+    mainwindow=MainWindow(send_end_thres_,exit_event)
     mainwindow.show()
 
     app.exec_()
