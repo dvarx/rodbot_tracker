@@ -1,4 +1,5 @@
 import cv2
+from pypylon import pylon
 import numpy as np
 from time import sleep
 import multiprocessing as mp
@@ -44,28 +45,30 @@ if __name__=="__main__":
   cv2.namedWindow("viewing_window")
   cv2.setMouseCallback('viewing_window',mouse_cb)
 
-  # Check if camera opened succesfully
-  if (cap.isOpened()== False): 
-    print("Error opening video stream or file")
+  # conecting to the first available camera
+  camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+  # Grabing Continusely (video) with minimal delay
+  camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly) 
+  converter = pylon.ImageFormatConverter()
+  # converting to opencv bgr format
+  converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+  converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
   """
   Main Program Loop
   """
-  framecounter=0
   while(cap.isOpened()):
-    ret, frame = cap.read()
-    framecounter+=1
-    #sleep a bit to slow down the framerate
-    #sleep(0.2)
+    #grab frame from camera
+    grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
     #check if threshold has been adjusted in GUI
     if recv_end_thres.poll():
       LOWER_THRES=recv_end_thres.recv()
-    if ret == True and loop_video == True:
-      #check if end of video reached, if yes repeat it
-      if framecounter==cap.get(cv2.CAP_PROP_FRAME_COUNT):
-          framecounter=0
-          cap.set(cv2.CAP_PROP_POS_FRAMES,0)
-        
+
+    if grabResult.GrabSucceeded():
+      #access image data
+      image = converter.Convert(grabResult)
+      frame = image.GetArray()
+
       #apply threshold and mask
       gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
       appliedthresh,imgmask=cv2.threshold(gray,LOWER_THRES,255,cv2.THRESH_BINARY)
