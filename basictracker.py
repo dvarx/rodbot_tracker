@@ -16,9 +16,9 @@ How to use:
 @author: dvarx
 """
 if __name__=="__main__":
-  """
+  """-------------------------------------------------------------------
   Global Definitions
-  """
+  -------------------------------------------------------------------"""
   roi_upperleft_pos=np.array([300,180])
   act_axes=np.array([1,0])
   alpha=0.5
@@ -30,9 +30,9 @@ if __name__=="__main__":
   act_disp_upperleft=center_act_disp-20*np.array([1,1])
   act_disp_lowerright=center_act_disp+20*np.array([1,1])
 
-  """
+  """-------------------------------------------------------------------
   Initialization Code
-  """
+  -------------------------------------------------------------------"""
 
   #mouse callback function, we need it to reset the running_avf when the user clicks the screen
   def mouse_cb(event,x,y,flags,param):
@@ -69,9 +69,9 @@ if __name__=="__main__":
   converter.OutputPixelFormat = pylon.PixelType_BGR8packed
   converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
-  """
+  """-------------------------------------------------------------------
   Main Program Loop
-  """
+  -------------------------------------------------------------------"""
   tik=time.time()
   
   while(True):
@@ -147,9 +147,9 @@ if __name__=="__main__":
       print("Video Capture Error")
 
 
-  """
+  """-------------------------------------------------------------------
   Exit Program
-  """
+  -------------------------------------------------------------------"""
   # When everything done, release the video capture object
   cap.release()
   
