@@ -1,4 +1,5 @@
 import cv2
+from pypylon import pylon
 import numpy as np
 from time import sleep
 import time
@@ -32,7 +33,6 @@ if __name__=="__main__":
   """
   Initialization Code
   """
-  cap = cv2.VideoCapture('test1.m4v')
 
   #mouse callback function, we need it to reset the running_avf when the user clicks the screen
   def mouse_cb(event,x,y,flags,param):
@@ -59,25 +59,29 @@ if __name__=="__main__":
   #define named window for mouse cb
   cv2.namedWindow("viewing_window")
   cv2.setMouseCallback('viewing_window',mouse_cb)
-
-  # Check if camera opened succesfully
-  if (cap.isOpened()== False): 
-    print("Error opening video stream or file")
+  
+  # conecting to the first available camera
+  camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+  # grabbing continuously (video) with minimal delay
+  camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly) 
+  converter = pylon.ImageFormatConverter()
+  # converting to opencv bgr format
+  converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+  converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
   """
   Main Program Loop
   """
-  framecounter=0
   tik=time.time()
   
-  while(cap.isOpened()):
+  while(True):
     #print("status of qt process: %s\n"%(str(proc_gui.is_alive())))
     #print("status of ps3 process: %s\n"%(str(proc_ps3.is_alive())))
     if(len(mp.active_children())<2):
         print("active children %s\n"%(str(mp.active_children())))
       
-    ret, frame = cap.read()
-    framecounter+=1
+    #grab frame from camera
+    grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
     
     #receive actuation from PS3 controller
     if recv_end_ps3_axes.poll():
@@ -88,11 +92,10 @@ if __name__=="__main__":
       LOWER_THRES=recv_end_thres.recv()
 
     #compute position, process and display frame
-    if ret == True and loop_video == True:
-      #check if end of video reached, if yes repeat it
-      if framecounter==cap.get(cv2.CAP_PROP_FRAME_COUNT):
-          framecounter=0
-          cap.set(cv2.CAP_PROP_POS_FRAMES,0)
+    if grabResult.GrabSucceeded():
+      #access image data
+      image = converter.Convert(grabResult)
+      frame = image.GetArray()
         
       #apply threshold and mask
       gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -139,9 +142,9 @@ if __name__=="__main__":
       if cv2.waitKey(25) & 0xFF == ord('q'):
         break
 
-    # Break the loop
+    # video capture not succesful
     else: 
-      break
+      print("Video Capture Error")
 
 
   """
