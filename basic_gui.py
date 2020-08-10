@@ -58,6 +58,7 @@ class MainWindow(QMainWindow):
 
         self.mainwidget=QWidget()
         self.mainwidget.setLayout(self.layout)
+        self.resize(500,250)
         self.setCentralWidget(self.mainwidget)
 
     def top_btn_cb(self):
