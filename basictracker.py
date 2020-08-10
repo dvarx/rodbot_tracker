@@ -6,6 +6,10 @@ import time
 import multiprocessing as mp
 from basic_gui import main_loop
 from ps3acquisition import ps3_acquisition
+from ECB import *
+import sys
+sys.path.append("./magnetic_computations")
+from actuation_computer import actuationComputer
 
 """
 Created on Thu Jul 23 17:00:57 2020
@@ -43,6 +47,13 @@ if __name__=="__main__":
 
   #define the exit event
   exit_event=mp.Event()
+
+  #initilize actuation computer (magnetic field math)
+  comp=actuationComputer(r"./calibration/minimag_calibration/mfg-100_00_meas_vfield_0%i.txt")
+  desB=np.array([0,0,5e-3])
+  desG=np.array([1,0,0])
+  A=comp.getA([0,0,0],[0,0,1])
+  ides=np.linalg.pinv(A).dot(np.concatenate((desB,desG)))
 
   #define pipes for communication with GUI process
   (recv_end_thres,send_end_thres)=mp.Pipe()
@@ -147,4 +158,5 @@ if __name__=="__main__":
   # Closes all the frames
   cv2.destroyAllWindows()
   
+  grabResult.Release()
   camera.close()
