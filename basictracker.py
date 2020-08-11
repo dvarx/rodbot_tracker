@@ -6,6 +6,7 @@ import time
 import multiprocessing as mp
 from basic_gui import main_loop
 from ps3acquisition import ps3_acquisition
+from numpy.linalg import norm,pinv
 from ECB import *
 import sys
 sys.path.append("./magnetic_computations")
@@ -24,7 +25,7 @@ if __name__=="__main__":
   Global Definitions
   """
   roi_upperleft_pos=np.array([300,180])
-  act_axes=np.array([1,0])
+  act_axes=np.array([0,0])
   alpha=0.5
   LOWER_THRES=100
   AOI_LENGTH=50
@@ -33,6 +34,8 @@ if __name__=="__main__":
   act_disp_window_halfsize=20
   act_disp_upperleft=center_act_disp-20*np.array([1,1])
   act_disp_lowerright=center_act_disp+20*np.array([1,1])
+  maxG=1
+  Gz=0
 
   """
   Initialization Code
@@ -50,7 +53,7 @@ if __name__=="__main__":
 
   #initilize actuation computer (magnetic field math)
   comp=actuationComputer(r"./calibration/minimag_calibration/mfg-100_00_meas_vfield_0%i.txt")
-  desB=np.array([0,0,5e-3])
+  desB=np.array([0,0,1e-3])
   desG=np.array([1,0,0])
   A=comp.getA([0,0,0],[0,0,1])
   ides=np.linalg.pinv(A).dot(np.concatenate((desB,desG)))
@@ -92,6 +95,13 @@ if __name__=="__main__":
     #receive actuation from PS3 controller
     if recv_end_ps3_axes.poll():
         act_axes=recv_end_ps3_axes.recv()
+        
+    #open loop joystick actuation
+    desG=maxG*act_axes
+    desG=np.concatenate((desG,np.array([0])))
+    A=A=comp.getA([0,0,0],desB/norm(desB))
+    ides=pinv(A).dot(np.concatenate((desB,desG)))
+    print(act_axes)
 
     #grab frame from camera
     grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
@@ -103,6 +113,7 @@ if __name__=="__main__":
       #access image data
       image = converter.Convert(grabResult)
       frame = image.GetArray()
+      frame=cv2.resize(frame,(int(frame.shape[1]/2),int(frame.shape[0]/2)))
 
       #apply threshold and mask
       gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
