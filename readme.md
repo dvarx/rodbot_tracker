@@ -1,6 +1,5 @@
-#Usage Instructions
+# Usage Instructions
 
-On Windows run:
+On Windows create a virtual environment and install the dependencies:
 
-py -3.7 -m pip install --user vtk==8.1.2
-py -3.7 -m pip install --user numpy scipy pypylon matplotlib
+    python -m pip install dependencies.txt

@@ -1,0 +1,3 @@
+[submodule "pyECB"]
+	path = pyECB
+	url = https://github.com/dvarx/pyECB
