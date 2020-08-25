@@ -1,3 +1,6 @@
 [submodule "pyECB"]
 	path = pyECB
 	url = https://github.com/dvarx/pyECB
+[submodule "magnetic_computations"]
+	path = magnetic_computations
+	url = https://github.com/dvarx/magnetic_computations.git
