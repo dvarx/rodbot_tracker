@@ -5,7 +5,7 @@ from time import sleep
 import time
 import multiprocessing as mp
 from basic_gui import main_loop
-from ps3acquisition import ps3_acquisition
+#from ps3acquisition import ps3_acquisition
 from numpy.linalg import norm,pinv
 from ECB import *
 import sys
@@ -65,10 +65,10 @@ if __name__=="__main__":
   proc_gui.start()
   
   #define pipes and events for communication with PS3 controller process
-  (recv_end_ps3_axes,send_end_ps3_axes)=mp.Pipe()
-  proc_ps3=mp.Process(target=ps3_acquisition,args=[send_end_ps3_axes,exit_event])
-  sleep(1)
-  proc_ps3.start()
+  #(recv_end_ps3_axes,send_end_ps3_axes)=mp.Pipe()
+  #proc_ps3=mp.Process(target=ps3_acquisition,args=[send_end_ps3_axes,exit_event])
+  #sleep(1)
+  #proc_ps3.start()
 
   #define named window for mouse cb
   cv2.namedWindow("viewing_window")
@@ -87,14 +87,14 @@ if __name__=="__main__":
   Main Program Loop
   """
   while(True):
-    #print("status of qt process: %s\n"%(str(proc_gui.is_alive())))
+    print("status of qt process: %s\n"%(str(proc_gui.is_alive())))
     #print("status of ps3 process: %s\n"%(str(proc_ps3.is_alive())))
-    if(len(mp.active_children())<2):
-        print("active children %s\n"%(str(mp.active_children())))
+    #if(len(mp.active_children())<2):
+    #    print("active children %s\n"%(str(mp.active_children())))
 
     #receive actuation from PS3 controller
-    if recv_end_ps3_axes.poll():
-        act_axes=recv_end_ps3_axes.recv()
+    #if recv_end_ps3_axes.poll():
+    #    act_axes=recv_end_ps3_axes.recv()
         
     #open loop joystick actuation
     desG=maxG*act_axes
