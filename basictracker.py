@@ -57,14 +57,20 @@ if __name__=="__main__":
   alpha=0.5
   LOWER_THRES=100
   AOI_LENGTH=50
-  loop_video=True
   center_act_disp=np.array([35,35])
   act_disp_window_halfsize=20
   act_disp_upperleft=center_act_disp-20*np.array([1,1])
   act_disp_lowerright=center_act_disp+20*np.array([1,1])
   maxG=1
   Gz=0
-  global cap                    #global variable used when reading from movie file
+  #global variables used when using video file
+  global cap
+  global loop_video
+  global no_video_frames
+  global framecounter
+  framecounter=0
+  loop_video=True
+  #global variables used when using camera
   global grabResult             #global variable used when using the camera
 
   """
@@ -114,10 +120,16 @@ if __name__=="__main__":
             return (True,frame)
   else:
     cap = cv2.VideoCapture('test_video.m4v')
+    no_video_frames=cap.get(cv2.CAP_PROP_FRAME_COUNT)
     if (cap.isOpened()== False):
           logging.error("could not open test video")
     def acquire_frame():
+        global framecounter
+        #if at end of video and looping activates, reset framecounter
+        if loop_video and framecounter==no_video_frames:
+          cap.set(cv2.CAP_PROP_POS_FRAMES,0)
         ret, frame = cap.read()
+        framecounter+=1
         return (True,frame)
           
 
