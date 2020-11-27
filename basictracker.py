@@ -1,17 +1,3 @@
-import cv2
-from pypylon import pylon
-import numpy as np
-from time import sleep
-import time
-import multiprocessing as mp
-from basic_gui import main_loop
-#from ps3acquisition import ps3_acquisition
-from numpy.linalg import norm,pinv
-from ECB import *
-import sys
-sys.path.append("./magnetic_computations")
-from actuation_computer import actuationComputer
-
 """
 Created on Thu Jul 23 17:00:57 2020
 
@@ -20,10 +6,52 @@ How to use:
 
 @author: dvarx
 """
+
+"""
+Initialize logging
+"""
+import logging
+global logging_level
+logging_level=logging.DEBUG
+logging.basicConfig(filename='basictracker.log',level=logging.DEBUG)
+
+"""
+Launch PyQt5 GUI process
+"""
+#imports for GUI
+#FIXME : for some reason PyQt5 GUI has to be launched at the beginning otherwise GUI window will not appear
+from time import sleep
+import multiprocessing as mp
+from basic_gui import main_loop
+
+#define the exit event
+global exit_event
+exit_event=mp.Event()
+(recv_end_thres,send_end_thres)=mp.Pipe()
+proc_gui=mp.Process(target=main_loop,args=[send_end_thres,exit_event,logging_level])
+sleep(1)
+proc_gui.start()
+
+"""
+set up opencv and main loop
+"""
+
+#imports for main loop and opencv
+import cv2
+from pypylon import pylon
+import numpy as np
+#from ps3acquisition import ps3_acquisition
+from numpy.linalg import norm,pinv
+from ECB import *
+import sys
+sys.path.append("./magnetic_computations")
+from actuation_computer import actuationComputer
+
 if __name__=="__main__":
   """
   Global Definitions
   """
+  use_camera=False
   roi_upperleft_pos=np.array([300,180])
   act_axes=np.array([0,0])
   alpha=0.5
@@ -36,6 +64,8 @@ if __name__=="__main__":
   act_disp_lowerright=center_act_disp+20*np.array([1,1])
   maxG=1
   Gz=0
+  global cap                    #global variable used when reading from movie file
+  global grabResult             #global variable used when using the camera
 
   """
   Initialization Code
@@ -45,11 +75,8 @@ if __name__=="__main__":
   def mouse_cb(event,x,y,flags,param):
       global roi_upperleft_pos
       if event==cv2.EVENT_LBUTTONDOWN:
-          print("Clicked : (%d,%d)"%(x,y))
+          logging.debug("Clicked : (%d,%d)"%(x,y))
           roi_upperleft_pos=np.array([max(0,x-LOWER_THRES/2),max(0,y-LOWER_THRES/2)])
-
-  #define the exit event
-  exit_event=mp.Event()
 
   #initilize actuation computer (magnetic field math)
   comp=actuationComputer(r"./calibration/minimag_calibration/mfg-100_00_meas_vfield_0%i.txt")
@@ -57,12 +84,6 @@ if __name__=="__main__":
   desG=np.array([1,0,0])
   A=comp.getA([0,0,0],[0,0,1])
   ides=np.linalg.pinv(A).dot(np.concatenate((desB,desG)))
-
-  #define pipes for communication with GUI process
-  (recv_end_thres,send_end_thres)=mp.Pipe()
-  proc_gui=mp.Process(target=main_loop,args=[send_end_thres,exit_event])
-  sleep(1)
-  proc_gui.start()
   
   #define pipes and events for communication with PS3 controller process
   #(recv_end_ps3_axes,send_end_ps3_axes)=mp.Pipe()
@@ -74,20 +95,37 @@ if __name__=="__main__":
   cv2.namedWindow("viewing_window")
   cv2.setMouseCallback('viewing_window',mouse_cb)
 
-  # conecting to the first available camera
-  camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
-  # Grabing Continusely (video) with minimal delay
-  camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly) 
-  converter = pylon.ImageFormatConverter()
-  # converting to opencv bgr format
-  converter.OutputPixelFormat = pylon.PixelType_BGR8packed
-  converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+  #use either camera input or video from file
+  if use_camera:
+    # conecting to the first available camera
+    camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+    # Grabing Continusely (video) with minimal delay
+    camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly) 
+    converter = pylon.ImageFormatConverter()
+    # converting to opencv bgr format
+    converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+    converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+    def acquire_frame():
+        #grab frame from camera
+        grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+        if grabResult.GrabSucceeded():
+            image = converter.Convert(grabResult)
+            frame = image.GetArray()
+            return (True,frame)
+  else:
+    cap = cv2.VideoCapture('test_video.m4v')
+    if (cap.isOpened()== False):
+          logging.error("could not open test video")
+    def acquire_frame():
+        ret, frame = cap.read()
+        return (True,frame)
+          
 
   """
   Main Program Loop
   """
   while(True):
-    print("status of qt process: %s\n"%(str(proc_gui.is_alive())))
+    #print("status of qt process: %s\n"%(str(proc_gui.is_alive())))
     #print("status of ps3 process: %s\n"%(str(proc_ps3.is_alive())))
     #if(len(mp.active_children())<2):
     #    print("active children %s\n"%(str(mp.active_children())))
@@ -101,19 +139,17 @@ if __name__=="__main__":
     desG=np.concatenate((desG,np.array([0])))
     A=A=comp.getA([0,0,0],desB/norm(desB))
     ides=pinv(A).dot(np.concatenate((desB,desG)))
-    print(act_axes)
 
-    #grab frame from camera
-    grabResult = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
     #check if threshold has been adjusted in GUI
     if recv_end_thres.poll():
       LOWER_THRES=recv_end_thres.recv()
 
-    if grabResult.GrabSucceeded():
-      #access image data
-      image = converter.Convert(grabResult)
-      frame = image.GetArray()
-      frame=cv2.resize(frame,(int(frame.shape[1]/2),int(frame.shape[0]/2)))
+    #acquire frame
+    (frame_acq_succesful,frame)=acquire_frame()
+
+    if frame_acq_succesful:
+      #resize image if necessary
+      frame=cv2.resize(frame,(int(frame.shape[1]),int(frame.shape[0])))
 
       #apply threshold and mask
       gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -150,12 +186,13 @@ if __name__=="__main__":
 
       cv2.imshow('viewing_window',concatimage)
 
-      # Press Q on keyboard to  exit
+      #press Q on keyboard to  exit
       if cv2.waitKey(25) & 0xFF == ord('q'):
         break
 
     # Break the loop
     else: 
+      logging.error("failed to acquire frame")
       break
 
 
@@ -165,9 +202,13 @@ if __name__=="__main__":
   
   # Set the exit_event such that child process will terminate
   exit_event.set()
+  sleep(0.5)
 
   # Closes all the frames
   cv2.destroyAllWindows()
   
-  grabResult.Release()
-  camera.close()
+  if use_camera:
+    grabResult.Release()
+    camera.close()
+  
+  sys.exit()
