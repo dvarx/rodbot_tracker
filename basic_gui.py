@@ -81,11 +81,10 @@ class MainWindow(QMainWindow):
 
     def slider_val_chgd(self,val):
         self.sliderlabel.setText("Value changed:%-3d"%(val))
-        #self.send_end_thres.send(val)
+        self.send_end_thres.send(val)
 
     def set_send_pipe(self,send_end_thres_):
-        print("x")
-        #self.send_end_thres=send_end_thres_
+        self.send_end_thres=send_end_thres_
 
 
 
